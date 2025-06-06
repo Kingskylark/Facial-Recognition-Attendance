@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: your-app-name
+    env: php
+    buildCommand: |
+      composer install
+      pip install -r requirements.txt
+    startCommand: php -S 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_PATH
+        value: /usr/bin/python3
