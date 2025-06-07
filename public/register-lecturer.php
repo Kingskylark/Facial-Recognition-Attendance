@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         // Initialize face recognition manager and encode face
                         try {
-                            $faceManager = new FaceRecognitionManager($conn);
+                            $faceManager = new FaceRecognitionManager($conn, debug:true, api_url:'https://facerecognitionapi-24ec.onrender.com');
 
                             // Use processLecturerRegistration method (you'll need to create this)
                             $encodingResult = $faceManager->processLecturerRegistration($full_img_path, $staff_id);
@@ -421,17 +421,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!-- WebcamJS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/webcamjs/1.0.26/webcam.min.js"></script>
 <script>
-let cameraOn = false;
+  let cameraOn = false;
 
-const cameraContainer = document.getElementById('cameraContainer');
-const openCameraBtn = document.getElementById('openCameraBtn');
-const captureBtn = document.getElementById('captureBtn');
-const closeCameraBtn = document.getElementById('closeCameraBtn');
-const preview = document.getElementById('preview');
-const encodingStatus = document.getElementById('encoding_status');
+    const cameraContainer = document.getElementById('cameraContainer');
+    const openCameraBtn = document.getElementById('openCameraBtn');
+    const captureBtn = document.getElementById('captureBtn');
+    const closeCameraBtn = document.getElementById('closeCameraBtn');
+    const preview = document.getElementById('preview');
+    const switchCameraBtn = document.getElementById('switchCameraBtn');
+    const encodingStatus = document.getElementById('encoding_status');
 
+let currentFacingMode = 'environment'; // Track current camera mode
+
+// Single button that cycles through states
 openCameraBtn.addEventListener('click', () => {
     if (!cameraOn) {
+        // First click: Open with front camera
+        currentFacingMode = 'user';
+        startCamera();
+        openCameraBtn.textContent = 'Switch to Back';
+    } else if (currentFacingMode === 'user') {
+        // Second click: Switch to back camera
+        stopCamera(); // Stop current camera first
+        currentFacingMode = 'environment';
+        startCamera();
+        openCameraBtn.textContent = 'Close Camera';
+    } else {
+        // Third click: Close camera
+        stopCamera();
+        openCameraBtn.textContent = 'Open Camera';
+    }
+});
+
+// Helper function to start camera
+function startCamera() {
+    try {
         Webcam.set({
             width: 320,
             height: 240,
@@ -439,72 +463,96 @@ openCameraBtn.addEventListener('click', () => {
             png_quality: 90,
             force_flash: false,
             flip_horiz: true,
-            fps: 45
+            fps: 45,
+            constraints: { facingMode: currentFacingMode }
         });
-
+        
         Webcam.attach('#my_camera');
         cameraContainer.style.display = 'block';
-        openCameraBtn.style.display = 'none';
         cameraOn = true;
+        
+        console.log('Camera started with facing mode:', currentFacingMode);
+    } catch (error) {
+        console.error('Error starting camera:', error);
+        alert('Failed to start camera. Please check permissions.');
+    }
+}
+
+// Helper function to stop camera
+function stopCamera() {
+    try {
+        Webcam.reset(); // This stops the camera stream
+        cameraContainer.style.display = 'none';
+        cameraOn = false;
+        console.log('Camera stopped');
+    } catch (error) {
+        console.error('Error stopping camera:', error);
+    }
+}
+
+// Close camera button (separate from cycling button)
+closeCameraBtn.addEventListener('click', () => {
+    if (cameraOn) {
+        stopCamera();
+        openCameraBtn.textContent = 'Open Camera';
+        openCameraBtn.style.display = 'inline-block';
     }
 });
 
-closeCameraBtn.addEventListener('click', () => {
+
+// Clean up when page is about to unload
+window.addEventListener('beforeunload', () => {
     if (cameraOn) {
-        Webcam.reset();
+        stopCamera();
+    }
+});
+    captureBtn.addEventListener('click', () => {
+        if (cameraOn) {
+            encodingStatus.innerHTML = '<div class="alert alert-warning"><small><i class="bi bi-clock"></i> Image captured. Face encoding will be processed during registration.</small></div>';
+
+            Webcam.snap(function (data_uri) {
+                document.getElementById('captured_image').value = data_uri;
+                preview.innerHTML = `
+                    <div class="border rounded p-2 bg-light">
+                        <img src="${data_uri}" class="img-thumbnail" style="max-width: 150px;">
+                        <div class="mt-2">
+                            <small class="text-success"><i class="bi bi-check-circle"></i> Photo captured successfully</small>
+                            <br>
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="retakePhoto()">
+                                <i class="bi bi-arrow-clockwise"></i> Retake
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                // Close camera after successful capture
+                Webcam.reset();
+                cameraContainer.style.display = 'none';
+                openCameraBtn.style.display = 'inline-block';
+                cameraOn = false;
+            });
+        }
+    });
+
+    function retakePhoto() {
+        document.getElementById('captured_image').value = '';
+        preview.innerHTML = '';
+        encodingStatus.innerHTML = '';
+
+        // Reopen camera
+        openCameraBtn.click();
+    }
+
+    // Handle camera errors
+    Webcam.on('error', function (err) {
+        console.error('Camera error:', err);
+        encodingStatus.innerHTML = '<div class="alert alert-danger"><small><i class="bi bi-exclamation-triangle"></i> Camera error: ' + err + '</small></div>';
+
+        // Reset camera state
         cameraContainer.style.display = 'none';
         openCameraBtn.style.display = 'inline-block';
         cameraOn = false;
-    }
-});
-
-captureBtn.addEventListener('click', () => {
-    if (cameraOn) {
-        encodingStatus.innerHTML = '<div class="alert alert-warning"><small><i class="bi bi-clock"></i> Image captured. Face encoding will be processed during registration.</small></div>';
-
-        Webcam.snap(function (data_uri) {
-            document.getElementById('captured_image').value = data_uri;
-            preview.innerHTML = `
-                <div class="border rounded p-2 bg-light">
-                    <img src="${data_uri}" class="img-thumbnail" style="max-width: 150px;">
-                    <div class="mt-2">
-                        <small class="text-success"><i class="bi bi-check-circle"></i> Photo captured successfully</small>
-                        <br>
-                        <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="retakePhoto()">
-                            <i class="bi bi-arrow-clockwise"></i> Retake
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            // Close camera after successful capture
-            Webcam.reset();
-            cameraContainer.style.display = 'none';
-            openCameraBtn.style.display = 'inline-block';
-            cameraOn = false;
-        });
-    }
-});
-
-function retakePhoto() {
-    document.getElementById('captured_image').value = '';
-    preview.innerHTML = '';
-    encodingStatus.innerHTML = '';
-
-    // Reopen camera
-    openCameraBtn.click();
-}
-
-// Handle camera errors
-Webcam.on('error', function (err) {
-    console.error('Camera error:', err);
-    encodingStatus.innerHTML = '<div class="alert alert-danger"><small><i class="bi bi-exclamation-triangle"></i> Camera error: ' + err + '</small></div>';
-
-    // Reset camera state
-    cameraContainer.style.display = 'none';
-    openCameraBtn.style.display = 'inline-block';
-    cameraOn = false;
-});
+    });
 
 // Form submission handler with processing modal
 document.getElementById('registrationForm').addEventListener('submit', function (e) {

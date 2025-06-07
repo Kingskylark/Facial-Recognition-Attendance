@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         // Initialize face recognition manager and ONLY encode face (no recognition)
                         try {
-                            $faceManager = new FaceRecognitionManager($conn);
+                            $faceManager = new FaceRecognitionManager($conn, debug:true, api_url:'https://facerecognitionapi-24ec.onrender.com');
 
                             $encodingResult = $faceManager->processStudentRegistration($full_img_path, $reg_number);
 
@@ -406,6 +406,9 @@ include_once '../includes/header.php';
                     <div class="mb-3">
                         <label class="form-label">Passport Photograph <span class="text-danger">*</span></label>
                         <div class="d-flex flex-column align-items-start">
+                        <button type="button" id="switchCameraBtn" class="btn btn-outline-secondary btn-sm" style="display: none;">
+    <i class="bi bi-camera-video"></i> Back Camera
+</button>
                             <button type="button" class="btn btn-outline-secondary btn-sm mb-2" id="openCameraBtn">
                                 <i class="bi bi-camera-fill"></i> Open Camera
                             </button>
@@ -526,36 +529,84 @@ include_once '../includes/header.php';
     const captureBtn = document.getElementById('captureBtn');
     const closeCameraBtn = document.getElementById('closeCameraBtn');
     const preview = document.getElementById('preview');
+    const switchCameraBtn = document.getElementById('switchCameraBtn');
     const encodingStatus = document.getElementById('encoding_status');
 
-    openCameraBtn.addEventListener('click', () => {
-        if (!cameraOn) {
-            Webcam.set({
-                width: 320,
-                height: 240,
-                image_format: 'png',
-                png_quality: 90,
-                force_flash: false,
-                flip_horiz: true,
-                fps: 45
-            });
+let currentFacingMode = 'environment'; // Track current camera mode
 
-            Webcam.attach('#my_camera');
-            cameraContainer.style.display = 'block';
-            openCameraBtn.style.display = 'none';
-            cameraOn = true;
-        }
-    });
+// Single button that cycles through states
+openCameraBtn.addEventListener('click', () => {
+    if (!cameraOn) {
+        // First click: Open with front camera
+        currentFacingMode = 'user';
+        startCamera();
+        openCameraBtn.textContent = 'Switch to Back';
+    } else if (currentFacingMode === 'user') {
+        // Second click: Switch to back camera
+        stopCamera(); // Stop current camera first
+        currentFacingMode = 'environment';
+        startCamera();
+        openCameraBtn.textContent = 'Close Camera';
+    } else {
+        // Third click: Close camera
+        stopCamera();
+        openCameraBtn.textContent = 'Open Camera';
+    }
+});
 
-    closeCameraBtn.addEventListener('click', () => {
-        if (cameraOn) {
-            Webcam.reset();
-            cameraContainer.style.display = 'none';
-            openCameraBtn.style.display = 'inline-block';
-            cameraOn = false;
-        }
-    });
+// Helper function to start camera
+function startCamera() {
+    try {
+        Webcam.set({
+            width: 320,
+            height: 240,
+            image_format: 'png',
+            png_quality: 90,
+            force_flash: false,
+            flip_horiz: true,
+            fps: 45,
+            constraints: { facingMode: currentFacingMode }
+        });
+        
+        Webcam.attach('#my_camera');
+        cameraContainer.style.display = 'block';
+        cameraOn = true;
+        
+        console.log('Camera started with facing mode:', currentFacingMode);
+    } catch (error) {
+        console.error('Error starting camera:', error);
+        alert('Failed to start camera. Please check permissions.');
+    }
+}
 
+// Helper function to stop camera
+function stopCamera() {
+    try {
+        Webcam.reset(); // This stops the camera stream
+        cameraContainer.style.display = 'none';
+        cameraOn = false;
+        console.log('Camera stopped');
+    } catch (error) {
+        console.error('Error stopping camera:', error);
+    }
+}
+
+// Close camera button (separate from cycling button)
+closeCameraBtn.addEventListener('click', () => {
+    if (cameraOn) {
+        stopCamera();
+        openCameraBtn.textContent = 'Open Camera';
+        openCameraBtn.style.display = 'inline-block';
+    }
+});
+
+
+// Clean up when page is about to unload
+window.addEventListener('beforeunload', () => {
+    if (cameraOn) {
+        stopCamera();
+    }
+});
     captureBtn.addEventListener('click', () => {
         if (cameraOn) {
             encodingStatus.innerHTML = '<div class="alert alert-warning"><small><i class="bi bi-clock"></i> Image captured. Face encoding will be processed during registration.</small></div>';

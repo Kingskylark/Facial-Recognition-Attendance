@@ -1,0 +1,80 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.env
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# PHP
+vendor/
+composer.phar
+composer.lock
+.phpunit.result.cache
+phpunit.xml
+.php_cs.cache
+
+# IDE/Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Image uploads/temp files
+uploads/
+temp/
+tmp/
+*.tmp
+*.log
+
+# Environment and config files
+.env
+.env.local
+.env.production
+config.local.php
+database.php
+
+# Recognition model files (uncomment if you have large model files)
+# *.h5
+# *.pb
+# *.onnx
+# models/
+
+# Output files
+output/
+results/
+screenshots/
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+error.log
+access.log
+
+# Cache
+cache/
+.cache/

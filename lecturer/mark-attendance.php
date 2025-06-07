@@ -27,6 +27,10 @@ $stmt = $conn->prepare("
 $stmt->execute(['lecturer_id' => $lecturer_id]);
 $lecturer = $stmt->fetch(PDO::FETCH_ASSOC);
 
+if (!$lecturer) {
+    header('Location: ../public/login.php?role=lecturer');
+    exit;
+}
 // Define current academic session and semester
 $current_session = '2024/2025';
 $current_semester = 'first';
@@ -236,7 +240,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
                         // Initialize face recognition manager for student recognition
                         try {
-                            $faceManager = new FaceRecognitionManager($conn);
+                            $faceManager = new FaceRecognitionManager($conn, debug:true, api_url:'https://facerecognitionapi-24ec.onrender.com');
+
 
                             // Recognize student from captured image
                             $recognitionResult = $faceManager->recognizeStudentForAttendance($temp_img_path, 'sc.student_id');
